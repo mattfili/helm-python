@@ -8,7 +8,7 @@ What happens when you hand an agent the entire sklearn API? Or pytorch? Or every
 
 With standard MCP, you can't. 500 endpoints = 500 tool definitions crammed into the context window before the agent writes a single token. The model chokes, the latency spikes, and you've burned your budget on tool descriptions.
 
-Fairlead compresses **any API surface** into **2 tools**: `search` and `call`. The agent discovers what it needs, calls it with typed arguments, and chains results together — programmatically, in a single round-trip.
+Fairlead compresses **any API surface** into **3 tools**: `search`, `call`, and `run`. The agent discovers what it needs, then executes a complete Python script against the results — loops, conditionals, variables, imports — in a single round-trip.
 
 ```python
 from fairlead import create_fairlead, FairleadOptions, openapi
@@ -72,16 +72,75 @@ Requires Python 3.12+. Zero runtime dependencies.
 
 ## How It Works
 
-### 2 Tools Instead of 2,000
+### 3 Tools Instead of 2,000
 
-An MCP server built with fairlead exposes exactly 2 tools:
+A standard MCP server creates one tool definition per endpoint. 500 endpoints = 500 tool definitions loaded into the context window before the model generates a single token. Context is wasted, latency spikes, and the model struggles to pick the right tool from a sea of options.
+
+A fairlead MCP server exposes exactly **3 tools**, regardless of how many operations are registered:
 
 | Tool | Purpose |
 |------|---------|
 | `search` | Find operations by name, description, or tags |
-| `call` | Invoke any operation by qualified name with keyword arguments |
+| `call` | Invoke a single operation by qualified name |
+| `run` | **Execute a Python code block** with the agent in scope |
 
-The agent doesn't need to know the full API upfront. It searches, discovers what's relevant, and calls it. This works whether your API surface has 6 operations or 6,000.
+`search` solves discovery. `call` handles one-off operations. `run` is the key — it's what makes fairlead fundamentally different.
+
+### Code Mode: `run`
+
+The `run` tool accepts a Python code string and executes it server-side in an async context where `agent` is available. The agent can call any registered operation, use Python control flow, import libraries, and return structured results — all in a **single MCP round-trip**.
+
+Here's what an agent sends as one tool call:
+
+```python
+# The agent generates this code and sends it via the 'run' tool.
+# The server executes the entire block and returns the result.
+
+status = await agent.call("git.status")
+flagged = []
+
+for f in status["untracked"]:
+    content = await agent.call("fs.read_file", {"path": f})
+    matches = await agent.call("grep.search", {"pattern": "FIXME", "path": f})
+    if matches:
+        await agent.call("git.add", {"paths": [f]})
+        flagged.append(f)
+
+f"{len(flagged)} files staged"  # last expression is returned
+```
+
+With standard MCP, this would be 4+ round-trips — one tool call per operation, with the model re-reasoning between each. With `run`, the model writes the logic once, the server executes it, and the model gets the final answer back.
+
+**How it works internally:**
+
+1. The code is parsed and wrapped in an `async def`
+2. If the last statement is an expression, it becomes the return value automatically
+3. `agent` is injected into the execution namespace
+4. `await agent.call(name, args)` invokes operations with full permission checks
+5. `print()` output is captured and returned alongside the result
+6. Errors propagate naturally — `PermissionDeniedError`, `ValueError`, etc.
+
+**Permissions are enforced on every `agent.call()` inside the code block.** An agent can't escalate by composing operations in a script — each individual call still checks the permission policy. If `fs.rm` is denied, it's denied whether called via `call` or inside `run`.
+
+### Works Everywhere, Not Just MCP
+
+`run` is a method on the `Fairlead` instance, not just an MCP tool. Any framework that holds a reference to the agent can use it directly:
+
+```python
+# Anthropic Agent SDK / Pydantic AI / LangChain / any framework
+result = await agent.run('''
+data = await agent.call("sklearn.load_dataset", {"name": "iris"})
+X, y = data["features"], data["target"]
+split = await agent.call("sklearn.train_test_split", {"X": X, "y": y})
+model = await agent.call("sklearn.fit_random_forest", {
+    "X": split["X_train"], "y": split["y_train"],
+    "n_estimators": 100,
+})
+await agent.call("sklearn.cross_val_score", {"model": model, "X": X, "y": y})
+''')
+```
+
+The interface is identical whether the code arrives over MCP (JSON-RPC stdio), or is called directly from Python. Same execution engine, same permission enforcement, same return semantics.
 
 ### Typed Results, Not Strings
 
@@ -94,24 +153,7 @@ status.staged          # list[FileChange]
 status.untracked       # list[str]
 ```
 
-The agent can dot-access fields, iterate lists, and branch on real values. No regex. No parsing.
-
-### Programmatic Chaining (Code Mode)
-
-Instead of one tool call per round-trip, the agent writes a script that chains operations together:
-
-```python
-# One round-trip. Four operations. Real control flow.
-status = await agent.call("git.status")
-
-for f in status.untracked:
-    content = await agent.call("fs.read_file", {"path": f})
-    matches = await agent.call("grep.search", {"pattern": "FIXME", "path": f})
-    if matches:
-        await agent.call("git.add", {"paths": [f]})
-```
-
-Standard MCP would need 4+ round-trips, each burning context window tokens and adding latency.
+Inside a `run` block, the agent works with real Python values — dot-access fields, iterate lists, branch on booleans. No regex. No parsing.
 
 ### Permissions on Every Call
 
@@ -225,7 +267,7 @@ python -m fairlead
 fairlead-mcp
 ```
 
-The server speaks JSON-RPC 2.0 over stdio. The agent sees 2 tools: `search` and `call`.
+The server speaks JSON-RPC 2.0 over stdio. The agent sees 3 tools: `search`, `call`, and `run`.
 
 ## Built-in Skills
 

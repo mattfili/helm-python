@@ -90,7 +90,7 @@ class TestPing:
 
 class TestToolsList:
     @pytest.mark.asyncio
-    async def test_returns_two_tools(self) -> None:
+    async def test_returns_three_tools(self) -> None:
         agent = _make_agent()
         resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
@@ -99,9 +99,9 @@ class TestToolsList:
         })
         assert resp is not None
         tools = resp["result"]["tools"]
-        assert len(tools) == 2
+        assert len(tools) == 3
         names = {t["name"] for t in tools}
-        assert names == {"search", "call"}
+        assert names == {"search", "call", "run"}
 
     @pytest.mark.asyncio
     async def test_search_tool_has_schema(self) -> None:
@@ -198,6 +198,78 @@ class TestCallDispatch:
         assert resp is not None
         data = json.loads(resp["result"]["content"][0]["text"])
         assert data == "hello world"
+
+
+class TestRunDispatch:
+    @pytest.mark.asyncio
+    async def test_run_simple_expression(self) -> None:
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
+            "jsonrpc": "2.0",
+            "id": 20,
+            "method": "tools/call",
+            "params": {
+                "name": "run",
+                "arguments": {"code": "1 + 2"},
+            },
+        })
+        assert resp is not None
+        content = resp["result"]["content"]
+        data = json.loads(content[-1]["text"])
+        assert data == 3
+
+    @pytest.mark.asyncio
+    async def test_run_chains_operations(self) -> None:
+        agent = _make_agent()
+        code = (
+            'x = await agent.call("test.add", {"a": 3, "b": 4})\n'
+            'await agent.call("test.greet", {"name": str(x)})'
+        )
+        resp = await _handle_message(agent, {
+            "jsonrpc": "2.0",
+            "id": 21,
+            "method": "tools/call",
+            "params": {
+                "name": "run",
+                "arguments": {"code": code},
+            },
+        })
+        assert resp is not None
+        content = resp["result"]["content"]
+        data = json.loads(content[-1]["text"])
+        assert data == "hello 7"
+
+    @pytest.mark.asyncio
+    async def test_run_captures_stdout(self) -> None:
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
+            "jsonrpc": "2.0",
+            "id": 22,
+            "method": "tools/call",
+            "params": {
+                "name": "run",
+                "arguments": {"code": 'print("from run")\n42'},
+            },
+        })
+        assert resp is not None
+        content = resp["result"]["content"]
+        assert len(content) == 2  # stdout + result
+        assert "from run" in content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_run_error_is_reported(self) -> None:
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
+            "jsonrpc": "2.0",
+            "id": 23,
+            "method": "tools/call",
+            "params": {
+                "name": "run",
+                "arguments": {"code": "1 / 0"},
+            },
+        })
+        assert resp is not None
+        assert resp["result"]["isError"] is True
 
 
 class TestErrorHandling:

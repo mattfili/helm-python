@@ -106,6 +106,17 @@ class Fairlead:
             ) from None
         return await bound_op(**(kwargs or {}))
 
+    async def run(self, code: str) -> Any:
+        """Execute a code block with this instance available as ``agent``.
+
+        Works identically whether called directly from Python (agent SDKs,
+        LangChain, etc.) or dispatched via the MCP ``run`` tool.
+        """
+        from fairlead._exec import exec_code
+
+        result = await exec_code(self, code)
+        return result
+
     def search(self, query: str) -> list[SearchResult]:
         return search(query, self._registry, self._policy, self._global_default)
 

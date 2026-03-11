@@ -84,6 +84,28 @@ async def _handle_message(agent: Fairlead, message: dict[str, Any]) -> dict[str,
                             "required": ["name"],
                         },
                     },
+                    {
+                        "name": "run",
+                        "description": (
+                            "Execute a Python code block with the agent in scope. "
+                            "Use `await agent.call(name, args)` to invoke operations. "
+                            "Use `agent.search(query)` to discover operations. "
+                            "The last expression is returned automatically. "
+                            "print() output is captured. "
+                            "Chain multiple operations with loops, conditionals, and variables "
+                            "to accomplish complex tasks in a single round-trip."
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "code": {
+                                    "type": "string",
+                                    "description": "Python code to execute. `agent` is available for calling operations.",
+                                }
+                            },
+                            "required": ["code"],
+                        },
+                    },
                 ]
             },
         }
@@ -119,6 +141,19 @@ async def _handle_message(agent: Fairlead, message: dict[str, Any]) -> dict[str,
                             {"type": "text", "text": json.dumps(content, indent=2)}
                         ]
                     },
+                }
+            elif tool_name == "run":
+                code = arguments.get("code", "")
+                run_result = await agent.run(code)
+                parts: list[dict[str, str]] = []
+                if run_result.stdout:
+                    parts.append({"type": "text", "text": run_result.stdout})
+                result_content = _serialize(run_result.result)
+                parts.append({"type": "text", "text": json.dumps(result_content, indent=2)})
+                return {
+                    "jsonrpc": "2.0",
+                    "id": msg_id,
+                    "result": {"content": parts},
                 }
             else:
                 return {
