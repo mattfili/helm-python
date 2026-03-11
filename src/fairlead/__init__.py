@@ -39,6 +39,7 @@ from fairlead.skills import (
     git,
     grep,
     http,
+    module,
     openapi,
     shell,
 )
@@ -81,6 +82,7 @@ __all__ = [
     "git",
     "grep",
     "http",
+    "module",
     "openapi",
     "resolve_permission",
     "search",

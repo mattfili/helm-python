@@ -34,24 +34,13 @@ issues = await agent.call("github.list_repo_issues", {
 Now imagine the same pattern with sklearn:
 
 ```python
-sklearn_skill = define_skill(
-    name="sklearn",
-    description="Scikit-learn machine learning library",
-    operations={
-        "train_test_split": OperationDef(
-            description="Split arrays into train and test subsets",
-            handler=sklearn.model_selection.train_test_split,
-        ),
-        "fit_random_forest": OperationDef(
-            description="Fit a random forest classifier",
-            handler=lambda X, y, **kw: RandomForestClassifier(**kw).fit(X, y),
-        ),
-        "cross_val_score": OperationDef(
-            description="Evaluate with cross-validation",
-            handler=sklearn.model_selection.cross_val_score,
-        ),
-        # ... every estimator, transformer, metric
-    },
+from fairlead import module
+
+agent = (
+    create_fairlead(FairleadOptions(default_permission="allow"))
+    .use(module("sklearn"))      # auto-discovers every estimator, transformer, metric
+    .use(module("pandas"))
+    .use(module("xgboost"))
 )
 ```
 
@@ -262,6 +251,44 @@ asyncio.run(main())
 ```
 
 YAML specs work too (requires `pyyaml`).
+
+## Python Module Skill Factory
+
+Any Python package becomes a fairlead skill automatically. The `module()` factory introspects the package, discovers all public callables, and turns them into searchable operations:
+
+```python
+from fairlead import create_fairlead, FairleadOptions, module
+
+agent = (
+    create_fairlead(FairleadOptions(default_permission="allow"))
+    .use(module("sklearn"))
+    .use(module("xgboost"))
+)
+
+# Agent searches, discovers, and calls — just like OpenAPI skills
+results = agent.search("random forest")
+# → finds sklearn.ensemble.RandomForestClassifier
+
+result = await agent.run('''
+from sklearn.datasets import load_iris
+data = load_iris()
+clf = await agent.call("sklearn.random_forest_classifier", {})
+clf.fit(data.data, data.target)
+clf.score(data.data, data.target)
+''')
+```
+
+Classes become constructor operations (calling them returns an instance). Methods like `fit` and `predict` are called directly in `run()` since it's full Python.
+
+Use `include`/`exclude` to scope large packages:
+
+```python
+# Only ensemble and metrics submodules
+module("sklearn", include=["ensemble", "metrics"])
+
+# Everything except tests
+module("sklearn", exclude=["tests", "_build_utils"])
+```
 
 ## Custom Skills
 
