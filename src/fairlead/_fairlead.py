@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import inspect
+import time
 from typing import Any
 
 from fairlead._permissions import PermissionDeniedError, resolve_permission
+from fairlead._trace import TraceEntry, get_trace, record_entry
 from fairlead._search import search
 from fairlead._types import (
     FairleadOptions,
@@ -21,15 +23,30 @@ def _make_bound(
     owner: Fairlead,
 ) -> Any:
     async def _wrapped(*args: Any, **kwargs: Any) -> Any:
+        tracing = get_trace() is not None
         permission = resolve_permission(
             qn, op_default, owner._policy, owner._global_default
         )
 
         if permission == "deny":
+            if tracing:
+                record_entry(TraceEntry(
+                    operation=qn,
+                    args=kwargs,
+                    error="PermissionDeniedError",
+                    permission="deny",
+                ))
             raise PermissionDeniedError(qn)
 
         if permission == "ask":
             if owner._on_permission_request is None:
+                if tracing:
+                    record_entry(TraceEntry(
+                        operation=qn,
+                        args=kwargs,
+                        error="PermissionDeniedError",
+                        permission="ask",
+                    ))
                 raise PermissionDeniedError(qn)
 
             result = owner._on_permission_request(qn, list(args))
@@ -39,12 +56,46 @@ def _make_bound(
                 allowed = result
 
             if not allowed:
+                if tracing:
+                    record_entry(TraceEntry(
+                        operation=qn,
+                        args=kwargs,
+                        error="PermissionDeniedError",
+                        permission="ask",
+                    ))
                 raise PermissionDeniedError(qn)
 
-        result = handler(*args, **kwargs)
-        if inspect.isawaitable(result):
-            return await result
-        return result
+        if not tracing:
+            result = handler(*args, **kwargs)
+            if inspect.isawaitable(result):
+                return await result
+            return result
+
+        t0 = time.monotonic()
+        try:
+            result = handler(*args, **kwargs)
+            if inspect.isawaitable(result):
+                result = await result
+        except Exception as exc:
+            duration_ms = (time.monotonic() - t0) * 1000
+            record_entry(TraceEntry(
+                operation=qn,
+                args=kwargs,
+                error=repr(exc),
+                permission=permission,
+                duration_ms=duration_ms,
+            ))
+            raise
+        else:
+            duration_ms = (time.monotonic() - t0) * 1000
+            record_entry(TraceEntry(
+                operation=qn,
+                args=kwargs,
+                result=result,
+                permission=permission,
+                duration_ms=duration_ms,
+            ))
+            return result
 
     return _wrapped
 

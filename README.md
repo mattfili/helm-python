@@ -122,6 +122,39 @@ With standard MCP, this would be 4+ round-trips — one tool call per operation,
 
 **Permissions are enforced on every `agent.call()` inside the code block.** An agent can't escalate by composing operations in a script — each individual call still checks the permission policy. If `fs.rm` is denied, it's denied whether called via `call` or inside `run`.
 
+### Execution Tracing
+
+Every `run()` automatically captures a step-by-step trace of every operation called inside the code block. No configuration needed — tracing is always active inside `run()` and has zero overhead outside it.
+
+```python
+result = await agent.run('''
+status = await agent.call("git.status")
+await agent.call("git.add", {"paths": status.untracked})
+await agent.call("git.commit", {"message": "stage untracked files"})
+''')
+
+for entry in result.trace:
+    print(f"{entry.operation} → {entry.result} ({entry.duration_ms:.1f}ms)")
+# git.status → GitStatus(...) (12.3ms)
+# git.add → None (4.1ms)
+# git.commit → Commit(...) (8.7ms)
+```
+
+Each `TraceEntry` records:
+
+| Field | Description |
+|-------|-------------|
+| `operation` | Qualified name, e.g. `"git.status"` |
+| `args` | Keyword arguments passed to the handler |
+| `result` | Return value (`None` if errored) |
+| `error` | `repr(exception)` if the handler raised |
+| `permission` | Resolved permission: `"allow"`, `"ask"`, or `"deny"` |
+| `duration_ms` | Wall-clock execution time |
+
+**Permission-denied operations are traced too** — the attempt is recorded with the `error` field set, which is critical for safety auditing. Standalone `agent.call()` outside of `run()` produces no trace (zero overhead). Nested `run()` calls get separate, isolated traces.
+
+When served over MCP, the `run` tool response automatically includes the serialized trace as an additional content part, so MCP clients can display what happened inside a code block.
+
 ### Works Everywhere, Not Just MCP
 
 `run` is a method on the `Fairlead` instance, not just an MCP tool. Any framework that holds a reference to the agent can use it directly:

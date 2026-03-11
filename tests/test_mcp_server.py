@@ -236,8 +236,12 @@ class TestRunDispatch:
         })
         assert resp is not None
         content = resp["result"]["content"]
-        data = json.loads(content[-1]["text"])
-        assert data == "hello 7"
+        # Last part is the trace; second-to-last is the result
+        trace_part = json.loads(content[-1]["text"])
+        assert "trace" in trace_part
+        assert len(trace_part["trace"]) == 2
+        result_part = json.loads(content[-2]["text"])
+        assert result_part == "hello 7"
 
     @pytest.mark.asyncio
     async def test_run_captures_stdout(self) -> None:

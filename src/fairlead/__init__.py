@@ -1,8 +1,10 @@
+from fairlead._exec import RunResult
 from fairlead._fairlead import Fairlead, create_fairlead
 from fairlead._mcp_server import serve
 from fairlead._permissions import PermissionDeniedError, resolve_permission
 from fairlead._search import search
 from fairlead._skill import define_skill
+from fairlead._trace import TraceEntry
 from fairlead._types import (
     FairleadOptions,
     OnPermissionRequest,
@@ -66,10 +68,12 @@ __all__ = [
     "RemoveOp",
     "ReplaceOp",
     "RequestOptions",
+    "RunResult",
     "SearchResult",
     "ShellExecOptions",
     "Skill",
     "StatResult",
+    "TraceEntry",
     "create_fairlead",
     "define_skill",
     "edit",

@@ -150,6 +150,9 @@ async def _handle_message(agent: Fairlead, message: dict[str, Any]) -> dict[str,
                     parts.append({"type": "text", "text": run_result.stdout})
                 result_content = _serialize(run_result.result)
                 parts.append({"type": "text", "text": json.dumps(result_content, indent=2)})
+                if run_result.trace:
+                    trace_data = _serialize(run_result.trace)
+                    parts.append({"type": "text", "text": json.dumps({"trace": trace_data}, indent=2)})
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,

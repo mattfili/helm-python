@@ -67,6 +67,7 @@ await agent.call("math.multiply", {"a": sum_result, "b": 10})
 """
         result = await agent.run(code)
         assert result.result == 70
+        assert len(result.trace) == 2
 
     @pytest.mark.asyncio
     async def test_loop_over_operations(self) -> None:
@@ -79,6 +80,7 @@ total
 """
         result = await agent.run(code)
         assert result.result == 10  # 0+0+1+2+3+4
+        assert len(result.trace) == 5
 
     @pytest.mark.asyncio
     async def test_conditional_logic(self) -> None:

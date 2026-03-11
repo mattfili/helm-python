@@ -4,8 +4,10 @@ import ast
 import contextlib
 import io
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from fairlead._trace import TraceEntry, _current_trace
 
 
 @dataclass
@@ -14,6 +16,7 @@ class RunResult:
 
     result: Any
     stdout: str
+    trace: list[TraceEntry] = field(default_factory=list)
 
 
 def _wrap_async(code: str) -> str:
@@ -45,8 +48,13 @@ async def exec_code(agent: Any, code: str) -> RunResult:
 
     exec(compile(wrapped, "<fairlead-exec>", "exec"), namespace)
 
-    stdout_buf = io.StringIO()
-    with contextlib.redirect_stdout(stdout_buf):
-        return_value = await namespace["__fairlead_exec__"]()
+    trace: list[TraceEntry] = []
+    token = _current_trace.set(trace)
+    try:
+        stdout_buf = io.StringIO()
+        with contextlib.redirect_stdout(stdout_buf):
+            return_value = await namespace["__fairlead_exec__"]()
+    finally:
+        _current_trace.reset(token)
 
-    return RunResult(result=return_value, stdout=stdout_buf.getvalue())
+    return RunResult(result=return_value, stdout=stdout_buf.getvalue(), trace=trace)
