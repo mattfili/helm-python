@@ -1,4 +1,4 @@
-# helm
+# fairlead
 
 A typed Python framework for AI agents. Agents call typed functions instead of parsing CLI stdout.
 
@@ -13,7 +13,7 @@ files = parse_git_status(output)  # fragile string parsing
 
 Every tool call is a round-trip. The agent sends text, waits for text back, parses it, then decides what to do next. Five operations = five round-trips, each burning context window tokens on serialization overhead.
 
-Helm fixes both problems: **typed operations** eliminate parsing, and **Code Mode** eliminates round-trips.
+Fairlead fixes both problems: **typed operations** eliminate parsing, and **Code Mode** eliminates round-trips.
 
 ```python
 status = await agent.git.status()
@@ -37,12 +37,12 @@ Requires Python 3.12+. Zero runtime dependencies.
 
 ```python
 import asyncio
-from helm import create_helm, HelmOptions
-from helm.skills import fs, git
+from fairlead import create_fairlead, FairleadOptions
+from fairlead.skills import fs, git
 
 async def main():
     agent = (
-        create_helm(HelmOptions(default_permission="allow"))
+        create_fairlead(FairleadOptions(default_permission="allow"))
         .use(fs())
         .use(git())
     )
@@ -61,7 +61,7 @@ asyncio.run(main())
 
 ## Code Mode
 
-Code Mode is what makes helm different from a bag of tools.
+Code Mode is what makes fairlead different from a bag of tools.
 
 Standard MCP gives an agent one tool per operation. An API with 500 endpoints means 500 tool definitions stuffed into the context window before the agent writes a single token. Worse, every operation is a round-trip — the agent calls one tool, waits for the result, reasons about it, then calls the next.
 
@@ -71,18 +71,18 @@ Code Mode compresses everything into **2 tools** (`search` + `call`) and lets th
 Standard MCP (5 round-trips):              Code Mode (1 round-trip):
 
 agent → tool: git.status                   agent → call tool:
-agent ← result                               status = helm.call("git.status")
+agent ← result                               status = fairlead.call("git.status")
 agent → tool: fs.read_file                    if status.branch != "main":
-agent ← result                                  diff = helm.call("git.diff")
+agent ← result                                  diff = fairlead.call("git.diff")
 agent → tool: git.diff                          files = [d.path for d in diff]
 agent ← result                                  for f in files:
-agent → tool: grep.search                          matches = helm.call("grep.search",
+agent → tool: grep.search                          matches = fairlead.call("grep.search",
 agent ← result                                       {"pattern": "TODO"})
-agent → tool: edit.replace                       helm.call("edit.replace", {...})
+agent → tool: edit.replace                       fairlead.call("edit.replace", {...})
 agent ← result                             agent ← final result
 ```
 
-The agent writes a script that reads, branches, and loops over typed results — the same way a human developer would. No round-trips, no string parsing, no context window bloat. And because helm operations return typed objects (not strings), the agent can dot-access fields, iterate over lists, and branch on real values instead of regex-matching text.
+The agent writes a script that reads, branches, and loops over typed results — the same way a human developer would. No round-trips, no string parsing, no context window bloat. And because fairlead operations return typed objects (not strings), the agent can dot-access fields, iterate over lists, and branch on real values instead of regex-matching text.
 
 ### Programmatic Tool Chaining
 
@@ -105,16 +105,16 @@ This works because `call()` returns typed Python objects, not serialized strings
 
 ### Why This Matters for Sandboxed Agents
 
-Sandboxed agents (containers, VMs, restricted shells) can't install arbitrary tools or call APIs directly. Helm gives them a typed, permissioned surface that works within the sandbox. Code Mode means the agent can do complex multi-step work without the latency penalty of one-tool-at-a-time execution — critical for agents that need to stay responsive while operating under constraints.
+Sandboxed agents (containers, VMs, restricted shells) can't install arbitrary tools or call APIs directly. Fairlead gives them a typed, permissioned surface that works within the sandbox. Code Mode means the agent can do complex multi-step work without the latency penalty of one-tool-at-a-time execution — critical for agents that need to stay responsive while operating under constraints.
 
 ### Running the MCP Server
 
 ```bash
 # Start the server (registers all built-in skills)
-python -m helm
+python -m fairlead
 
 # Or use the CLI entry point
-helm-mcp
+fairlead-mcp
 ```
 
 The server speaks JSON-RPC 2.0 over stdio. An agent sees exactly 2 tools:
@@ -124,10 +124,10 @@ The server speaks JSON-RPC 2.0 over stdio. An agent sees exactly 2 tools:
 
 ### OpenAPI Skill Factory
 
-Any OpenAPI 3.x spec becomes a helm skill. Load a 2,500-endpoint API, expose it via Code Mode, and the agent sees 2 tools instead of 2,500:
+Any OpenAPI 3.x spec becomes a fairlead skill. Load a 2,500-endpoint API, expose it via Code Mode, and the agent sees 2 tools instead of 2,500:
 
 ```python
-from helm import create_helm, HelmOptions, openapi, serve
+from fairlead import create_fairlead, FairleadOptions, openapi, serve
 import asyncio
 
 petstore = openapi(
@@ -137,7 +137,7 @@ petstore = openapi(
     default_permission="allow",
 )
 
-agent = create_helm(HelmOptions(default_permission="allow")).use(petstore)
+agent = create_fairlead(FairleadOptions(default_permission="allow")).use(petstore)
 
 async def main():
     # Every endpoint is a typed operation
@@ -217,7 +217,7 @@ Spec sources: dict, JSON string, file path, or URL. YAML specs work too (require
 Every operation has a permission level: `"allow"`, `"ask"`, or `"deny"`.
 
 ```python
-agent = create_helm(HelmOptions(
+agent = create_fairlead(FairleadOptions(
     permissions={
         "fs.read_file": "allow",    # always permitted
         "fs.write_file": "ask",     # requires approval
@@ -246,7 +246,7 @@ for r in results[:5]:
 ## Custom Skills
 
 ```python
-from helm import define_skill, OperationDef
+from fairlead import define_skill, OperationDef
 
 weather = define_skill(
     name="weather",
@@ -260,7 +260,7 @@ weather = define_skill(
     },
 )
 
-agent = create_helm().use(weather)
+agent = create_fairlead().use(weather)
 forecast = await agent.weather.forecast("Seattle")
 ```
 
@@ -271,7 +271,7 @@ forecast = await agent.weather.forecast("Seattle")
 uv run pytest
 
 # type check
-uv run mypy src/helm
+uv run mypy src/fairlead
 
 # lint
 uv run ruff check src/ tests/

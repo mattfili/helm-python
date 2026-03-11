@@ -4,9 +4,9 @@ import shutil
 
 import pytest
 
-from helm import HelmOptions, create_helm
-from helm.skills import grep
-from helm.skills._grep import GrepOptions
+from fairlead import FairleadOptions, create_fairlead
+from fairlead.skills import grep
+from fairlead.skills._grep import GrepOptions
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def tmp_dir():
 
 
 def agent(cwd: str):
-    return create_helm(HelmOptions(permissions={"grep.*": "allow"})).use(grep(cwd=cwd))
+    return create_fairlead(FairleadOptions(permissions={"grep.*": "allow"})).use(grep(cwd=cwd))
 
 
 class TestGrepSkill:

@@ -5,8 +5,8 @@ import shutil
 
 import pytest
 
-from helm import HelmOptions, create_helm
-from helm.skills import git
+from fairlead import FairleadOptions, create_fairlead
+from fairlead.skills import git
 
 
 def exec_git(args: list[str], cwd: str) -> str:
@@ -31,7 +31,7 @@ def git_repo():
 
 
 def agent(cwd: str):
-    return create_helm(HelmOptions(permissions={"git.*": "allow"})).use(git(cwd=cwd))
+    return create_fairlead(FairleadOptions(permissions={"git.*": "allow"})).use(git(cwd=cwd))
 
 
 class TestStatus:

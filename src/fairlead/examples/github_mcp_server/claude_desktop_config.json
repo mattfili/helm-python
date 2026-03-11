@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "python",
+      "args": ["-m", "fairlead.examples.github_mcp_server"]
+    }
+  }
+}

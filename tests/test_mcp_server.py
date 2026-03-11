@@ -2,17 +2,17 @@ import json
 
 import pytest
 
-from helm import (
-    HelmOptions,
+from fairlead import (
+    FairleadOptions,
     OperationDef,
     PermissionDeniedError,
-    create_helm,
+    create_fairlead,
     define_skill,
 )
-from helm._mcp_server import _handle_message, _serialize
+from fairlead._mcp_server import _handle_message, _serialize
 
 
-def _make_helm():
+def _make_agent():
     skill = define_skill(
         name="test",
         description="Test skill",
@@ -38,14 +38,14 @@ def _make_helm():
             ),
         },
     )
-    return create_helm(HelmOptions(default_permission="allow")).use(skill)
+    return create_fairlead(FairleadOptions(default_permission="allow")).use(skill)
 
 
 class TestInitialize:
     @pytest.mark.asyncio
     async def test_returns_capabilities(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
@@ -60,14 +60,14 @@ class TestInitialize:
         result = resp["result"]
         assert result["protocolVersion"] == "2025-11-25"
         assert "tools" in result["capabilities"]
-        assert result["serverInfo"]["name"] == "helm-mcp"
+        assert result["serverInfo"]["name"] == "fairlead-mcp"
 
 
 class TestNotifications:
     @pytest.mark.asyncio
     async def test_notification_returns_none(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
         })
@@ -77,8 +77,8 @@ class TestNotifications:
 class TestPing:
     @pytest.mark.asyncio
     async def test_ping(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 2,
             "method": "ping",
@@ -91,8 +91,8 @@ class TestPing:
 class TestToolsList:
     @pytest.mark.asyncio
     async def test_returns_two_tools(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/list",
@@ -105,8 +105,8 @@ class TestToolsList:
 
     @pytest.mark.asyncio
     async def test_search_tool_has_schema(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 4,
             "method": "tools/list",
@@ -117,8 +117,8 @@ class TestToolsList:
 
     @pytest.mark.asyncio
     async def test_call_tool_has_schema(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 5,
             "method": "tools/list",
@@ -132,8 +132,8 @@ class TestToolsList:
 class TestSearchDispatch:
     @pytest.mark.asyncio
     async def test_search_returns_results(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 6,
             "method": "tools/call",
@@ -151,8 +151,8 @@ class TestSearchDispatch:
 
     @pytest.mark.asyncio
     async def test_search_empty_query(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 7,
             "method": "tools/call",
@@ -169,8 +169,8 @@ class TestSearchDispatch:
 class TestCallDispatch:
     @pytest.mark.asyncio
     async def test_call_operation(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 8,
             "method": "tools/call",
@@ -185,8 +185,8 @@ class TestCallDispatch:
 
     @pytest.mark.asyncio
     async def test_call_with_string_result(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 9,
             "method": "tools/call",
@@ -203,8 +203,8 @@ class TestCallDispatch:
 class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_permission_denied(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 10,
             "method": "tools/call",
@@ -219,8 +219,8 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_unknown_tool(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 11,
             "method": "tools/call",
@@ -235,8 +235,8 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_unknown_method(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 12,
             "method": "unknown/method",
@@ -247,8 +247,8 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_invalid_operation_name(self) -> None:
-        helm = _make_helm()
-        resp = await _handle_message(helm, {
+        agent = _make_agent()
+        resp = await _handle_message(agent, {
             "jsonrpc": "2.0",
             "id": 13,
             "method": "tools/call",

@@ -4,9 +4,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import pytest
 
-from helm import HelmOptions, create_helm
-from helm.skills import http
-from helm.skills._http import RequestOptions
+from fairlead import FairleadOptions, create_fairlead
+from fairlead.skills import http
+from fairlead.skills._http import RequestOptions
 
 
 class _TestHandler(BaseHTTPRequestHandler):
@@ -59,7 +59,7 @@ def base_url():
 
 
 def agent():
-    return create_helm(HelmOptions(permissions={"http.*": "allow"})).use(http())
+    return create_fairlead(FairleadOptions(permissions={"http.*": "allow"})).use(http())
 
 
 class TestHttpSkill:

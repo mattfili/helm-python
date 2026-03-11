@@ -1,12 +1,12 @@
 import pytest
 
-from helm import HelmOptions, create_helm
-from helm.skills import shell
-from helm.skills._shell import ShellExecOptions
+from fairlead import FairleadOptions, create_fairlead
+from fairlead.skills import shell
+from fairlead.skills._shell import ShellExecOptions
 
 
 def agent():
-    return create_helm(HelmOptions(permissions={"shell.*": "allow"})).use(shell())
+    return create_fairlead(FairleadOptions(permissions={"shell.*": "allow"})).use(shell())
 
 
 class TestShellSkill:
@@ -44,7 +44,7 @@ class TestShellSkill:
 
     @pytest.mark.asyncio
     async def test_factory_cwd(self) -> None:
-        a = create_helm(HelmOptions(permissions={"shell.*": "allow"})).use(
+        a = create_fairlead(FairleadOptions(permissions={"shell.*": "allow"})).use(
             shell(cwd="/tmp")
         )
         result = await a.shell.dangerous_exec("pwd")
@@ -53,7 +53,7 @@ class TestShellSkill:
 
     @pytest.mark.asyncio
     async def test_per_call_cwd_override(self) -> None:
-        a = create_helm(HelmOptions(permissions={"shell.*": "allow"})).use(
+        a = create_fairlead(FairleadOptions(permissions={"shell.*": "allow"})).use(
             shell(cwd="/tmp")
         )
         result = await a.shell.dangerous_exec(
@@ -63,7 +63,7 @@ class TestShellSkill:
 
     @pytest.mark.asyncio
     async def test_factory_env(self) -> None:
-        a = create_helm(HelmOptions(permissions={"shell.*": "allow"})).use(
+        a = create_fairlead(FairleadOptions(permissions={"shell.*": "allow"})).use(
             shell(env={"HELM_TEST_VAR": "from_factory"})
         )
         result = await a.shell.dangerous_exec("echo $HELM_TEST_VAR")
@@ -71,7 +71,7 @@ class TestShellSkill:
 
     @pytest.mark.asyncio
     async def test_merge_env(self) -> None:
-        a = create_helm(HelmOptions(permissions={"shell.*": "allow"})).use(
+        a = create_fairlead(FairleadOptions(permissions={"shell.*": "allow"})).use(
             shell(env={"HELM_A": "a"})
         )
         result = await a.shell.dangerous_exec(

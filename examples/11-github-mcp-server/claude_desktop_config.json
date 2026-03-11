@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "github": {
-      "command": "python",
-      "args": ["server.py"],
-      "cwd": "/path/to/examples/11-github-mcp-server"
-    }
-  }
-}

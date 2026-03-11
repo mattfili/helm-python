@@ -4,8 +4,8 @@ import shutil
 
 import pytest
 
-from helm import HelmOptions, create_helm
-from helm.skills import fs
+from fairlead import FairleadOptions, create_fairlead
+from fairlead.skills import fs
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def tmp_dir():
 
 
 def agent():
-    return create_helm(HelmOptions(permissions={"fs.*": "allow"})).use(fs())
+    return create_fairlead(FairleadOptions(permissions={"fs.*": "allow"})).use(fs())
 
 
 class TestFsSkill:

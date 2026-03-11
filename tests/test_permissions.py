@@ -1,4 +1,4 @@
-from helm import PermissionDeniedError, resolve_permission
+from fairlead import PermissionDeniedError, resolve_permission
 
 
 class TestResolvePermission:

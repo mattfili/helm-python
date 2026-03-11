@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "helm": {
-      "command": "python",
-      "args": ["server.py"],
-      "cwd": "/path/to/examples/04-mcp-server"
-    }
-  }
-}

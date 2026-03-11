@@ -4,8 +4,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import pytest
 
-from helm import HelmOptions, PermissionDeniedError, create_helm
-from helm.skills._openapi import openapi, _slugify, _operation_name, _resolve_refs
+from fairlead import FairleadOptions, PermissionDeniedError, create_fairlead
+from fairlead.skills._openapi import openapi, _slugify, _operation_name, _resolve_refs
 
 
 PETSTORE_SPEC: dict = {
@@ -221,7 +221,7 @@ class TestHttpHandlers:
     @pytest.mark.asyncio
     async def test_list_pets(self, pet_server: int) -> None:
         skill = openapi(_make_spec(pet_server), name="petstore", default_permission="allow")
-        agent = create_helm(HelmOptions(default_permission="allow")).use(skill)
+        agent = create_fairlead(FairleadOptions(default_permission="allow")).use(skill)
         result = await agent.call("petstore.list_pets")
         assert result["status"] == 200
         assert isinstance(result["data"], list)
@@ -229,7 +229,7 @@ class TestHttpHandlers:
     @pytest.mark.asyncio
     async def test_get_pet_by_id(self, pet_server: int) -> None:
         skill = openapi(_make_spec(pet_server), name="petstore", default_permission="allow")
-        agent = create_helm(HelmOptions(default_permission="allow")).use(skill)
+        agent = create_fairlead(FairleadOptions(default_permission="allow")).use(skill)
         result = await agent.call("petstore.get_pet", {"petId": 1})
         assert result["status"] == 200
         assert result["data"]["id"] == 1
@@ -237,7 +237,7 @@ class TestHttpHandlers:
     @pytest.mark.asyncio
     async def test_create_pet(self, pet_server: int) -> None:
         skill = openapi(_make_spec(pet_server), name="petstore", default_permission="allow")
-        agent = create_helm(HelmOptions(default_permission="allow")).use(skill)
+        agent = create_fairlead(FairleadOptions(default_permission="allow")).use(skill)
         result = await agent.call("petstore.create_pet", {"body": {"name": "Rex"}})
         assert result["status"] == 201
         assert result["data"]["name"] == "Rex"
@@ -245,13 +245,13 @@ class TestHttpHandlers:
     @pytest.mark.asyncio
     async def test_query_params(self, pet_server: int) -> None:
         skill = openapi(_make_spec(pet_server), name="petstore", default_permission="allow")
-        agent = create_helm(HelmOptions(default_permission="allow")).use(skill)
+        agent = create_fairlead(FairleadOptions(default_permission="allow")).use(skill)
         result = await agent.call("petstore.list_pets", {"query": {"limit": "10"}})
         assert result["status"] == 200
 
     @pytest.mark.asyncio
     async def test_permission_enforcement(self, pet_server: int) -> None:
         skill = openapi(_make_spec(pet_server), name="petstore", default_permission="deny")
-        agent = create_helm().use(skill)
+        agent = create_fairlead().use(skill)
         with pytest.raises(PermissionDeniedError):
             await agent.call("petstore.list_pets")

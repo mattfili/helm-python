@@ -4,19 +4,19 @@ import shutil
 
 import pytest
 
-from helm import HelmOptions, create_helm
-from helm.skills import edit
+from fairlead import FairleadOptions, create_fairlead
+from fairlead.skills import edit
 
 
 @pytest.fixture
 def tmp_dir():
-    d = tempfile.mkdtemp(prefix="helm-edit-test-")
+    d = tempfile.mkdtemp(prefix="fairlead-edit-test-")
     yield d
     shutil.rmtree(d, ignore_errors=True)
 
 
 def agent():
-    return create_helm(HelmOptions(permissions={"edit.*": "allow"})).use(edit())
+    return create_fairlead(FairleadOptions(permissions={"edit.*": "allow"})).use(edit())
 
 
 class TestEditSkill:
