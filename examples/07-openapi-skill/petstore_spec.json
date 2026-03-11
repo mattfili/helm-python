@@ -1,0 +1,102 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Petstore",
+    "description": "A sample API for managing pets — used to demonstrate helm's openapi() factory.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://petstore3.swagger.io/api/v3"
+    }
+  ],
+  "paths": {
+    "/pet": {
+      "post": {
+        "operationId": "addPet",
+        "summary": "Add a new pet to the store",
+        "tags": ["pet"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "status": { "type": "string", "enum": ["available", "pending", "sold"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Pet added" }
+        }
+      }
+    },
+    "/pet/findByStatus": {
+      "get": {
+        "operationId": "findPetsByStatus",
+        "summary": "Find pets by status",
+        "tags": ["pet"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["available", "pending", "sold"] }
+          }
+        ],
+        "responses": {
+          "200": { "description": "List of pets" }
+        }
+      }
+    },
+    "/pet/{petId}": {
+      "get": {
+        "operationId": "getPetById",
+        "summary": "Find pet by ID",
+        "tags": ["pet"],
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Pet details" }
+        }
+      },
+      "delete": {
+        "operationId": "deletePet",
+        "summary": "Delete a pet",
+        "tags": ["pet"],
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Pet deleted" }
+        }
+      }
+    },
+    "/store/inventory": {
+      "get": {
+        "operationId": "getInventory",
+        "summary": "Returns pet inventories by status",
+        "tags": ["store"],
+        "responses": {
+          "200": { "description": "Inventory map" }
+        }
+      }
+    }
+  }
+}
